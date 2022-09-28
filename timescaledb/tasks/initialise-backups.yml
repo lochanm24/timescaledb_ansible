@@ -1,0 +1,44 @@
+---
+# Skipping Ansible-Lint in the following tasks due to rule 503:
+# "Tasks that run when changed should likely be handlers"
+- name: Initialise backup repositories if needed
+  command: >
+    pgbackrest --stanza={{ timescaledb_databases|join('_') }} --log-level-console=info stanza-create
+  become:       true
+  become_user:  postgres
+  when:         pgbackrest_config.changed
+  register:     stanza_create
+  changed_when: "'stanza-create was already performed' not in stanza_create.stdout"
+  tags:
+    - skip_ansible_lint
+
+- name: Check backup config works
+  command: >
+    pgbackrest --stanza={{ timescaledb_databases|join('_') }} --log-level-console=info check
+  become:       true
+  become_user:  postgres
+  when:         stanza_create.changed
+  changed_when: false
+  tags:
+    - skip_ansible_lint
+
+- name: Create backup schedule
+  template:
+    src:   "templates/etc/cron.d/backup.j2"
+    dest:  "/etc/cron.d/backup-{{ timescaledb_databases|join('_') }}"
+    owner: root
+    group: root
+    mode:  0644
+
+- name: Ensure logrotate installed
+  apt:
+    name:  logrotate
+    state: present
+
+- name: Create logrotate config
+  template:
+    src:  "templates/etc/logrotate.d/pgbackrest.j2"
+    dest: "/etc/logrotate.d/pgbackrest"
+    owner: root
+    group: root
+    mode:  0644

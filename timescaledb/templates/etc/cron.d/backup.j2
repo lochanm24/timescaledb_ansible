@@ -1,0 +1,8 @@
+# "{{ ansible_managed | regex_replace('role_name_placeholder', role_name) }}"
+
+# Full backup at 02:30 every Sunday
+30 02 * * 0 postgres pgbackrest --type=full --stanza={{ timescaledb_databases|join('_') }} backup
+
+# Incremental backup at 02:30 every Monday-Saturday
+# (If no previous full backup exists, pgbackrest will automatically change this to a full backup.)
+30 02 * * 1-6 postgres pgbackrest --type=incr --stanza={{ timescaledb_databases|join('_') }} backup

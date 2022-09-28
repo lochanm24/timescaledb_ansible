@@ -1,0 +1,46 @@
+---
+- name: TimescaleDB preload config
+  lineinfile:
+    path:        "{{ timescaledb_postgresql_conf_directory }}/postgresql.conf"
+    insertafter: "^# Add settings for extensions here"
+    line:        "shared_preload_libraries = 'timescaledb'"
+    state:       present
+  register: preload_config
+
+- name: Listen on specified addresses
+  lineinfile:
+    path:     "{{ timescaledb_postgresql_conf_directory }}/postgresql.conf"
+    regexp:   "^[#\\s]*listen_addresses\\s*=[^#]*(#.*)?"
+    backrefs: true
+    line:     "listen_addresses = '{{ timescaledb_listen_addresses|join(',') }}' \\1"
+    state:    present
+  when:     timescaledb_listen_addresses is defined and timescaledb_listen_addresses|length > 0
+  register: listen_config
+
+- name: Configure client auth records
+  blockinfile:
+    path:        "{{ timescaledb_postgresql_conf_directory }}/pg_hba.conf"
+    block:       "{{ timescaledb_client_auth_records_block }}"
+    insertafter: EOF
+  when:     timescaledb_client_auth_records_block is defined
+  register: auth_config
+
+- name: Check if timescaledb-tune would make changes
+  command: >
+    timescaledb-tune -color=false -yes -quiet -dry-run
+  register:     timescaledb_tune_dry_run
+  changed_when: false
+
+# If the 'dry run' of timescaledb-tune indicated that it would make changes to the PostgreSQL config, we will run the
+# tool for real here
+- name: Run timescaledb-tune
+  command: >
+    timescaledb-tune -color=false -yes -quiet
+  when:         "'no changes needed' not in timescaledb_tune_dry_run.stderr"
+  register:     timescaledb_tune
+  changed_when: "'no changes needed' not in timescaledb_tune.stderr"
+
+- name: timescaledb-tune result
+  debug:
+    var: timescaledb_tune
+  when: "'no changes needed' not in timescaledb_tune_dry_run.stderr"

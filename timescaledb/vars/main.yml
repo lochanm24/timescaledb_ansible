@@ -1,0 +1,3 @@
+---
+# unique token used to detect if the TimescaleDB extension was changed
+timescaledb_extension_changed_token: "W8SGCBd8FBbSph9q"

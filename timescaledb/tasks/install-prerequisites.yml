@@ -1,0 +1,6 @@
+---
+# Needed by postgresql_ext module
+- name: Install psycopg2
+  apt:
+    name:  "{{ 'python3-psycopg2' if 'python3' in ansible_python_interpreter|default('') else 'python-psycopg2' }}"
+    state: present

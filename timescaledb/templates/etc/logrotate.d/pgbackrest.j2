@@ -1,0 +1,10 @@
+# "{{ ansible_managed | regex_replace('role_name_placeholder', role_name) }}"
+
+# rotate pgbackrest logs weekly, keeping 26 weeks of logs
+/var/log/pgbackrest/*.log {
+    rotate 26
+    weekly
+    compress
+    dateext
+    missingok
+}

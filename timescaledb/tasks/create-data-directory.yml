@@ -1,0 +1,38 @@
+---
+- name: Ensure data directory exists
+  file:
+    path:  "{{ timescaledb_data_directory }}"
+    owner: "postgres"
+    group: "postgres"
+    state: directory
+    mode:  0700
+  register: data_dir
+
+# Skipping Ansible-Lint in these three tasks due to rule 503:
+# "Tasks that run when changed should likely be handlers"
+
+- name: Stop PostgreSQL service before dropping old data directory's cluster
+  service:
+    name:  postgresql
+    state: stopped
+  when: data_dir.changed
+  tags:
+    - skip_ansible_lint
+
+- name: Drop cluster in old data directory
+  command: >
+    pg_dropcluster {{ timescaledb_postgresql_version }} main
+  become:      true
+  become_user: postgres
+  when:        data_dir.changed
+  tags:
+    - skip_ansible_lint
+
+- name: Create cluster in new data directory
+  command: >
+    pg_createcluster -d {{ timescaledb_data_directory }} {{ timescaledb_postgresql_version }} main
+  become:      true
+  become_user: postgres
+  when:        data_dir.changed
+  tags:
+    - skip_ansible_lint

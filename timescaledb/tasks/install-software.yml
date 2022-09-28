@@ -1,0 +1,59 @@
+---
+- name: CA certificates
+  apt:
+    pkg:   "ca-certificates"
+    state: present
+
+- name: PostgreSQL APT key
+  apt_key:
+    id:    "{{ timescaledb_postgresql_apt_key_id }}"
+    url:   "{{ timescaledb_postgresql_apt_key_url }}"
+    state: present
+  register: postgresql_apt_key
+
+- name: PostgreSQL APT repository
+  apt_repository:
+    repo:  "{{ timescaledb_postgresql_apt_repository }}"
+    state: present
+  register: postgresql_apt_repo
+
+# For some previous installs, we were using 'official' packages from the TimescaleDB APT repository. But this repo
+# is unhelpful for our purposes (the repository maintainers remove old package versions following the release of new
+# versions, which makes it very difficult for us to achieve repeatability). So we now use our own packages (built from
+# upstream sources) in our own APT repository, and no longer need the TimescaleDB APT repository.
+- name: Remove TimescaleDB APT respository if previously added
+  apt_repository:
+    repo:  "{{ timescaledb_ppa_repository }}"
+    state: absent
+  register: timescaledb_apt_repo
+
+# Ignores 'no-handler: Tasks that run when changed should likely be handlers' as we only want to run apt-get update when
+# the repo config has changed, to avoid executing this long-running task needlessly.
+- name: Update APT cache
+  apt:
+    update_cache: true
+  when: postgresql_apt_key is changed or postgresql_apt_repo is changed or timescaledb_apt_repo is changed
+  tags:
+    - skip_ansible_lint
+
+# Note: installing the 'full' TimescaleDB package should cause any old 'official' timescaledb and timescaledb-loader
+# packages (from the TimescaleDB PPA) to be automatically uninstalled by APT.
+- name: Install PostgreSQL and TimescaleDB packages
+  apt:
+    name:  "timescaledb-full-postgresql-{{ timescaledb_postgresql_version }}={{ timescaledb_package_version }}"
+    state: present
+    force: true   # need to use this until this Ansible PR gets merged: https://github.com/ansible/ansible/pull/33677
+  register: db_packages_install
+
+# Note: installing the timescaledb-tune package should cause any old timescaledb-tools package (from the TimescaleDB PPA)
+# to be automatically uninstalled by APT.
+- name: Install timescaledb-tune package
+  apt:
+    name:  "timescaledb-tune={{ timescaledb_tune_package_version }}"
+    state: present
+    force: true   # need to use this until this Ansible PR gets merged: https://github.com/ansible/ansible/pull/33677
+
+- name: Install backup tools
+  apt:
+    name:  "pgbackrest"
+    state: present

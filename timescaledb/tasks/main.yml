@@ -1,0 +1,18 @@
+---
+# Include tasks from other files
+- include_tasks: "{{ file.name }}.yml"
+  when:          "{{ file.condition }}"
+  loop:
+    - { name: "validation", condition: "True" }               # Validate pre-conditions
+    - { name: "install-prerequisites", condition: "True" }    # Install pre-requisites
+    - { name: "install-software", condition: "True" }         # Install software packages
+    - { name: "create-data-directory", condition: "True" }    # Create data directory if needed
+    - { name: "configure-postgres", condition: "True" }       # Basic PostgreSQL config for TimescaleDB
+    - { name: "configure-backups", condition: "timescaledb_backup_directory is defined" }      # Configure backups
+    - { name: "restart-postgres", condition: "True" }         # Restart PostgreSQL if needed by previous changes
+    - { name: "initialise-backups", condition: "timescaledb_backup_directory is defined" }     # Initialise backups if needed
+    - { name: "add-timescaledb-to-dbs", condition: "True" }   # Add TimescaleDB extension to database(s)
+    - { name: "add-users", condition: "True" }                # Add DB users
+    - { name: "ruok-probes", condition: "True" }              # Configure relevant RUOK probes
+  loop_control:
+    loop_var: file

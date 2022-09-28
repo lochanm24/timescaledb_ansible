@@ -1,0 +1,26 @@
+---
+- name: Validate required parameters are specified
+  assert:
+    that: "{{ item }} is defined"
+    msg:  "Required parameter '{{ item }}' is not defined"
+  with_items:
+    - timescaledb_postgresql_version
+    - timescaledb_databases
+    - timescaledb_data_directory
+
+- name: Validate required parameters are valid
+  assert:
+    that: "item.value in item.valid_choices"
+    msg:  "Invalid {{ item.name }} - '{{ item.value }}' is not valid - must be one of '{{ item.valid_choices | list_without_optional | join(', ') }}'."
+  with_items:
+    - name:          timescaledb_postgresql_version
+      value:         "{{ timescaledb_postgresql_version }}"
+      valid_choices:
+        - 9.6
+        - 10
+        - 11
+
+- name: Validate OS
+  assert:
+    that: "ansible_os_family == 'Debian'"
+    msg:  "Only Debian-based distros are supported"

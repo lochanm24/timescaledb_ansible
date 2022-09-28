@@ -1,0 +1,8 @@
+# "{{ ansible_managed | regex_replace('role_name_placeholder', role_name) }}"
+
+[{{ timescaledb_databases|join('_') }}]
+pg1-path={{ timescaledb_data_directory }}
+
+[global]
+repo1-path={{ timescaledb_backup_directory }}/{{ postgresql_system_id }}
+repo1-retention-full={{ timescaledb_backup_retention }}

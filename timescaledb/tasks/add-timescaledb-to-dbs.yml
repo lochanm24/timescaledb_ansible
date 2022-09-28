@@ -1,0 +1,41 @@
+---
+- name: Ensure databases are present
+  postgresql_db:
+    name:  "{{ item }}"
+    state: present
+  become:      true
+  become_user: postgres
+  with_items:  "{{ timescaledb_databases }}"
+
+# Skipping Ansible-Lint in this task due to rule 503:
+# "Tasks that run when changed should likely be handlers"
+
+# We use a script provided by our in-house packaging of the TimescaleDB package here, for the specific purpose of
+# handling the awkward logic around updating an extension to a new version once the supporting files for the existing
+# configured version have been removed (a situation that arises in upgrades, and one that does not interact nicely
+# with the postgresql_ext Ansible module).
+- name: Ensure TimescaleDB extension is added to databases
+  command: >
+    ensure-timescaledb-extension.sh {{ item }} {{ timescaledb_extension_version }} {{ timescaledb_extension_changed_token }}
+  with_items:   "{{ timescaledb_databases }}"
+  when:         db_packages_install.changed
+  register:     ensure_timescaledb_extension
+  changed_when: "timescaledb_extension_changed_token in ensure_timescaledb_extension.stdout"
+  tags:
+    - skip_ansible_lint
+
+- debug:
+    var: ensure_timescaledb_extension
+  when: db_packages_install.changed
+  tags:
+    - skip_ansible_lint
+
+# Practical experience tells us that we need to restart PostgreSQL under some circumstances when the TimescaleDB
+# extension has been updated.
+- name: (Re)start PostgreSQL service
+  service:
+    name:  postgresql
+    state: restarted
+  when: ensure_timescaledb_extension.changed
+  tags:
+    - skip_ansible_lint

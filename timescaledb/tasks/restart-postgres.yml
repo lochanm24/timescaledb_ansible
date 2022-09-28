@@ -1,0 +1,19 @@
+---
+
+# Forcing the Postgres restart at a specific point, so Timescale-specific config can take place.
+# This would fail if Postgres wasn't restarted first.
+# Skipping Ansible-Lint due to rule 503 "Tasks that run when changed should likely be handlers"
+- name: (Re)start PostgreSQL service
+  service:
+    name:  postgresql
+    state: restarted
+  when: >
+    (preload_config is defined and preload_config.changed) or
+    (listen_config is defined and listen_config.changed) or
+    (auth_config is defined and auth_config.changed) or
+    (data_dir is defined and data_dir.changed) or
+    (timescaledb_tune is defined and timescaledb_tune.changed) or
+    (archive_mode_config is defined and archive_mode_config.changed) or
+    (archive_command_config is defined and archive_command_config.changed)
+  tags:
+    - skip_ansible_lint

@@ -1,0 +1,14 @@
+---
+- name: Add users to DBs
+  postgresql_user:
+    name:            "{{ item.name }}"
+    password:        "{{ item.password | default(omit) }}"
+    db:              "{{ item.db | default(omit) }}"
+    priv:            "{{ item.priv | default(omit) }}"
+    role_attr_flags: "{{ item.role_attr_flags | default(omit) }}"
+    state: present
+  become:      true
+  become_user: postgres
+  no_log:      true
+  with_items:  "{{ timescaledb_users }}"
+  when:        timescaledb_users is defined and timescaledb_users|length > 0

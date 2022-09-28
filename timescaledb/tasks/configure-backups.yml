@@ -1,0 +1,50 @@
+---
+# We need to know the unique System Identifier of the PostgreSQL cluster so that we
+# can avoid newly-rebuilt systems from trashing backups from previous systems.
+- name: Get PostgreSQL System Identifier
+  shell: >
+    /usr/lib/postgresql/{{ timescaledb_postgresql_version }}/bin/pg_controldata {{ timescaledb_data_directory }} | grep '^Database system identifier:' | rev | cut -d' ' -f 1 | rev
+  register:     postgresql_system_id
+  changed_when: false
+- name: Store PostgreSQL System Identifier
+  set_fact:
+    postgresql_system_id: "{{ postgresql_system_id.stdout }}"
+
+- name: PostgreSQL System Identifier
+  debug:
+    var: postgresql_system_id
+
+- name: Ensure backup repository exists
+  file:
+    path:  "{{ timescaledb_backup_directory }}/{{ postgresql_system_id }}"
+    owner: "postgres"
+    group: "postgres"
+    state: directory
+    mode:  0700
+
+- name: Generate pgbackrest config
+  template:
+    src:   "templates/etc/pgbackrest.conf.j2"
+    dest:  "/etc/pgbackrest.conf"
+    owner: "postgres"
+    group: "postgres"
+    mode:  0640
+  register: pgbackrest_config
+
+- name: Enable PostgreSQL archive mode
+  lineinfile:
+    path:     "{{ timescaledb_postgresql_conf_directory }}/postgresql.conf"
+    regexp:   "^[#\\s]*archive_mode\\s*=[^#]*(#.*)?"
+    backrefs: true
+    line:     "archive_mode = on \\1"
+    state:    present
+  register: archive_mode_config
+
+- name: Configure PostgreSQL archive command
+  lineinfile:
+    path:     "{{ timescaledb_postgresql_conf_directory }}/postgresql.conf"
+    regexp:   "^[#\\s]*archive_command\\s*=[^#]*(#.*)?"
+    backrefs: true
+    line:     "archive_command = 'pgbackrest --stanza={{ timescaledb_databases|join('_') }} archive-push %p' \\1"
+    state:    present
+  register: archive_command_config

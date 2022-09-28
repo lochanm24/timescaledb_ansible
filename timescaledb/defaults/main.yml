@@ -1,0 +1,21 @@
+---
+# TimescaleDB package versions
+timescaledb_package_version:           "1.4.1-de~0.10.0"
+timescaledb_tune_package_version:      "0.7.0-de~0.4.0"
+
+# TimescaleDB extension version
+timescaledb_extension_version:         "1.4.1"
+
+# Number of full (weekly) backups to retain
+timescaledb_backup_retention:          4
+
+# PostgreSQL APT repo details
+timescaledb_postgresql_apt_key_id:     "ACCC4CF8"
+timescaledb_postgresql_apt_key_url:    "https://www.postgresql.org/media/keys/ACCC4CF8.asc"
+timescaledb_postgresql_apt_repository: "deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main {{ timescaledb_postgresql_version }}"
+
+# TimescaleDB PPA repo details
+timescaledb_ppa_repository:            "ppa:timescale/timescaledb-ppa"
+
+# PostgreSQL config file directory
+timescaledb_postgresql_conf_directory: "/etc/postgresql/{{ timescaledb_postgresql_version }}/main"
